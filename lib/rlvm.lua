@@ -326,7 +326,7 @@ local function instr_move()
   for i=1,dist do
     res,reason=move[side]()
     if not res then
-      dist=i
+      dist=i-1
       break
     end
   end
