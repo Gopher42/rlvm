@@ -729,9 +729,12 @@ local instrTable = {
 --]]
 
 function rlvm.run(prog,debug)
+  if not debug then
+    rlvm.reset()
+  end
+
   program=prog
-  a,b,n,s=1,false,0,""
-  sa,sb,sn,ss={},{},{},{}
+  a=1
   running=true
   local progLen=#program
   if debug then
@@ -771,5 +774,13 @@ function rlvm.dump()
   printStack("sb",sb)
   printStack("ss",ss)
 end
+
+function rlvm.reset()
+  program=""
+  a,b,n,s=1,false,0,""
+  sa,sb,sn,ss={},{},{},{}
+  running=true
+end
+
 
 return rlvm

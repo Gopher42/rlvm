@@ -43,6 +43,7 @@ local commands={
   help=function()
     end,
   dump=rlvm.dump,
+  reset=rlvm.reset,
 }
 
 term.clear()
