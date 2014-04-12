@@ -17,7 +17,7 @@ if os.getenv("SHELL")=="/bin/sh" then
 end
 
 do
-  local keep={computer=true,print=true,package=true,component=true,term=true,filesystem=true,buffer=true,os=true}
+  local keep={computer=true,print=true,package=true,component=true,term=true,filesystem=true,buffer=true,os=true,unicode=true}
 
   for k,v in pairs(package.loaded) do
     if not keep[k] then
@@ -25,7 +25,6 @@ do
       package.preload[k]=nil
     end
   end
-
 end
 --_G={}
 
@@ -43,13 +42,15 @@ local commands={
     end,
   help=function()
     end,
+  dump=rlvm.dump,
 }
 
 term.clear()
+local history={}
 print("RobotLang Interpreter v0.5a\n\n/help for control commands\n/exit to exit\n\nbytecode mode")
 while not exit  do
   term.write("bc]")
-  local prog=term.read()
+  local prog=term.read(history)
 
   if prog:match("^/") then
     --command
@@ -66,7 +67,7 @@ while not exit  do
 
     prog=prog:sub(1,#prog-1)
 
-    local res,err=pcall(rlvm.run,prog)
+    local res,err=pcall(rlvm.run,prog,true)
 
     if res then
       print("\nOK")

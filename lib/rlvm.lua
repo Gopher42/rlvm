@@ -70,7 +70,6 @@ local regxrConv={
     [120]="x",
     [121]="y",
     [122]="z",
-    [102]="f",
     [101]="e",
     [100]="d",
     [108]="l",
@@ -81,6 +80,22 @@ local regxrConv={
     [118]="v",
   }
 
+local readReg={
+    [ 98]=function() return b end,
+    [110]=function() return n end,
+    [115]=function() return s end,
+    [116]=function() return robot.select() end,
+    [120]=function() return nav and ({nav.getPosition()})[1] or 0 end,
+    [121]=function() return nav and ({nav.getPosition()})[2] or 0 end,
+    [122]=function() return nav and ({nav.getPosition()})[3] or 0 end,
+    [101]=function() return math.floor(computer.energy()) end,
+    [100]=function() return math.floor(robot.durability()) end,
+    [108]=function() return math.floor(robot.level()) end,
+    [107]=function() return sn[#sn] end,
+    [109]=function() return robot.name() end,
+    [113]=function() local d,msg=robot.durability() return d~=nil or msg=="tool cannot be damaged" end,
+    [118]=function() return nav and nav.getPosition()~=nil or false end,
+  }
 local hexConv={
     [48]=1,
     [49]=2,
@@ -145,38 +160,10 @@ end
 local function pullRegxr()
   local byte=nextByte()
   local reg=regxrConv[byte]
-  if reg=="n" then
-    return n
-  elseif reg=="s" then
-    return s
-  elseif reg=="b" then
-    return b
-  elseif reg=="t" then
-    return robot.select()
-  elseif reg=="x" then
-    return nav and ({nav.getPosition()})[1] or 0
-  elseif reg=="y" then
-    return nav and ({nav.getPosition()})[2] or 0
-  elseif reg=="z" then
-    return nav and ({nav.getPosition()})[3] or 0
-  elseif reg=="v" then
-    return nav and nav.getPosition()~=nil or false
-  elseif reg=="l" then
-    return math.floor(robot.level())
-  elseif reg=="e" then
-    return math.floor(computer.energy())
-  elseif reg=="k" then
-    return sn[#sn]
-  elseif reg=="m" then
-    return robot.name()
-  elseif reg=="q" then
-    local d,msg=robot.durability()
-    return d~=nil or msg=="tool cannot be damaged"
-  elseif reg=="d" then
-    local d,msg=robot.durability()
-    return d or 0
-  --[[else
-    error("Invalid regx argument")]]
+  if reg then
+    return readReg[byte]()
+  else
+    error("Invalid regx argument")
   end
 end
 
@@ -202,8 +189,8 @@ local function pullImm()
     v=false
   elseif byte==49 then
     v=true
-  --[[else
-    error("expected immediate value")]]
+  else
+    error("expected immediate value")
   end
   return v
 end
@@ -217,8 +204,8 @@ local function pullNum()
     v=n
   elseif byte==107 then
     v=sn[#sn]
-  --[[else
-    error("Expected number literal or n")]]
+  else
+    error("Expected number literal, n, or k")
   end
   return v
 end
@@ -227,6 +214,8 @@ local function pullSlot()
   local byte=nextByte
   if byte==110 then
     return n
+  elseif byte==107 then
+    return sn[#sn]
   else
     return hexConv[byte]
   end
@@ -336,12 +325,15 @@ local function instr_move()
   end
   for i=1,dist do
     res,reason=move[side]()
-    if not res then break end
+    if not res then
+      dist=i
+      break
+    end
   end
   if side~="b" then
     turnBack[side]()
   end
-  b,s=res,reason or s
+  b,n,s=res,dist,reason or s
 end
 
 local function instr_face()
@@ -407,8 +399,8 @@ local function instr_compare()
       robot.select(slot)
       b=compare[side]()
       turnBack[side]()
-    --[[else
-      error("invalid first arg to compare, expected slot or side")]]
+    else
+      error("invalid first arg to compare, expected slot or side")
     end
   end
 end
@@ -427,13 +419,30 @@ local function instr_transfer()
 end
 
 local function instr_push()
-  local v=pullRegxr()
-  if type(v)=="string" then
-    ss[#ss+1]=v
+  local byte=nextByte()
+  local v
+  if regxrConv[byte] then
+    v=readReg(byte)
+  elseif byte==35 then
+    v=readNumLit()
+  elseif byte==39 then
+    local len=nextB64()
+    v=program:sub(a,a+len-1)
+    a=a+len
+  elseif byte==48 then
+    v=false
+  elseif byte==49 then
+    v=true
+  else
+    error("invalid argument to push")
+  end
+
+  if type(v)=="number" then
+    sn[#sn+1]=v
   elseif type(v)=="boolean" then
     sb[#sb+1]=v
-  else
-    sn[#sn+1]=v
+  elseif type(v)=="string" then
+    ss[#ss+1]=v
   end
 end
 
@@ -487,7 +496,7 @@ local function instr_pop()
 end
 
 local function instr_peek()
-  local reg,index=pullReg(),pullNum()
+  local reg,index=pullRegx(),pullNum()
   if reg=="b" then
     local l=#sb
     b=sb[l-index+1]
@@ -497,7 +506,41 @@ local function instr_peek()
   elseif reg=="s" then
     local l=#ss
     s=ss[l-index+1]
+  elseif reg=="t" then
+    robot.select(sn[l-index+1])
   end
+end
+
+local function instr_poke()
+  local byte,index=nextByte(),pullNum()
+  local reg=regxrConv[byte]
+  local v
+  if reg then
+    v=readReg[byte]()
+    local stack=sn
+    if type(v)=="boolean" then
+      stack=sb
+    elseif type(v)=="string" then
+      stack=ss
+    end
+  elseif byte==35 then
+    v=readNumLit()
+    stack=sn
+  elseif byte==39 then
+    local len=nextB64()
+    v=program:sub(a,a+len-1)
+    a=a+len
+    stack=ss
+  elseif byte==48 then
+    v=false
+    stack=sb
+  elseif byte==49 then
+    v=true
+    stack=sb
+  else
+    error("Invalid arg#1, expected register or immediate")
+  end
+  stack[#stack-index+1]=val
 end
 
 local function instr_burn()
@@ -667,6 +710,7 @@ local instrTable = {
     [77]=instr_move,
     [76]=instr_call,
     [75]=instr_peek,
+    [65]=instr_poke,
     [74]=instr_jump,
     [86]=instr_load,
     [35]=instr_loadn,
@@ -675,6 +719,7 @@ local instrTable = {
     [49]=instr_loadb1,
     [46]=instr_print,
     [88]=instr_transfer,
+    [32]=function() end,
   }
 
 --[[
@@ -683,22 +728,48 @@ local instrTable = {
 
 --]]
 
-function rlvm.run(prog)
+function rlvm.run(prog,debug)
   program=prog
   a,b,n,s=1,false,0,""
   sa,sb,sn,ss={},{},{},{}
   running=true
   local progLen=#program
-
-  while running and a<=progLen do
-    local byte=nextByte()
-    if instrTable[byte]==nil then
-      error("Invalid instruction "..byte)
+  if debug then
+    while running and a<=progLen do
+      local byte=nextByte()
+      if instrTable[byte]==nil then
+        error("Invalid instruction "..string.char(byte).."("..byte..")")
+      end
+      local pa=a
+      local res,err=pcall(instrTable[byte])
+      if not res then
+        print("error executing instruction "..string.char(byte).."("..byte..") : "..(err or ""))
+        return
+      end
     end
-    instrTable[byte]()
+  else
+    while running and a<=progLen do
+      local byte=nextByte()
+      if instrTable[byte]==nil then
+        error("Invalid instruction "..string.char(byte).."("..byte..")")
+      end
+      instrTable[byte]()
+    end
   end
+end
 
-
+function rlvm.dump()
+  print("a:"..a,"b:"..tostring(b),"n:"..n,"s:"..s)
+  local function printStack(n,s)
+    local str=n..":"
+    for i=1,#s do
+      str=str.." "..tostring(s[i])
+    end
+    print(str)
+  end
+  printStack("sn",sn)
+  printStack("sb",sb)
+  printStack("ss",ss)
 end
 
 return rlvm
