@@ -66,7 +66,7 @@ while not exit  do
     end
   else
 
-    prog=prog:sub(1,#prog-1)
+    prog=prog:sub(1,#prog-1):gsub("\\n","\n")
 
     local res,err=pcall(rlvm.run,prog,true)
 
