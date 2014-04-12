@@ -422,7 +422,7 @@ local function instr_push()
   local byte=nextByte()
   local v
   if regxrConv[byte] then
-    v=readReg(byte)
+    v=readReg[byte]()
   elseif byte==35 then
     v=readNumLit()
   elseif byte==39 then
@@ -724,7 +724,7 @@ local instrTable = {
 
 --[[
 !>DTCB|=<+-*/%^PONU&SRIHFMLKJV#'01.X
-!>|=<+-*/%^&#'01.BCDFHIJKLMNOPRSTUVX
+!>|=<+-*/%^&#'01.ABCDFHIJKLMNOPRSTUVX
 
 --]]
 
