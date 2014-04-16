@@ -1805,6 +1805,7 @@ local commands={
   slave=function()
     print("run rli on the robot to slave and enter\n>/slave "..modem.address:sub(1,4))
     while true do
+      modem.open(4201)
       local e={event.pull()}
       if e[1]=="key_down" and e[3]==3 then
         print("ctrl+c, cancelled")
