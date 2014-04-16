@@ -785,8 +785,7 @@ function rlvm.run(prog,debug)
       local pa=a
       local res,err=pcall(instrTable[byte])
       if not res then
-        print("error executing instruction "..string.char(byte).."("..byte..") : "..(err or ""))
-        return
+        return "error executing instruction "..string.char(byte).."("..byte..") : "..(err or "")
       end
     end
   else
@@ -798,6 +797,7 @@ function rlvm.run(prog,debug)
       instrTable[byte]()
     end
   end
+  return "Ok"
 end
 
 function rlvm.dump()

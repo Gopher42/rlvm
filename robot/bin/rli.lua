@@ -8,6 +8,8 @@ robot language interpreter
 local computer=require("computer")
 local os=require("os")
 local term=require("term")
+local event=require("event")
+local component=require("component")
 
 if os.getenv("SHELL")=="/bin/sh" then
   os.setenv("SHELL",require("process").running())
@@ -41,9 +43,53 @@ local commands={
       print("Available Memory: "..computer.freeMemory())
     end,
   help=function()
+    print[[Commands:
+/exit         exit the rl interpreter
+/mem          display free memory
+/dump         display the stack and registers
+/reset        reset the stack and registers
+/slave <addr> slave to a computer
+   waits for a computer with the modem address
+   <addr> to send programs, runs them, and sends
+   results back to the computer. Requires
+   wireless network card. For use with hlrl on
+   the computer.
+/help         display this. Herpderp.]]
     end,
   dump=rlvm.dump,
   reset=rlvm.reset,
+  slave=function(partialAddy)
+    if not partialAddy then
+      print("/slave <address>\n<address> should be the whole or partial address of the modem of the computer to slave to.")
+    end
+
+    print("slaving to "..partialAddy.."\nctrl+c to return to prompt\nWaiting for instructions")
+    local modem=component.modem
+    modem.open(4201)
+
+    modem.broadcast(4201,"slave ready")
+
+    while true do
+      local e={event.pull()}
+      if e[1]=="key_down" and e[3]==3 then
+        break
+      end
+      if e[1]=="modem_message" then
+        sender,program=e[3],e[6]
+        print("message from "..e[3])
+        if sender:sub(1,#partialAddy)==partialAddy then
+          rlvm.reset()
+          local res,result=pcall(rlvm.run,program,true)
+          modem.send(sender,4201,result)
+        end
+      end
+    end
+    modem.close(4201)
+
+    print("ctrl+c detected, leaving slave mode and returning to prompt")
+
+  end
+
 }
 
 term.clear()
@@ -60,7 +106,7 @@ while not exit  do
     if f then
       local argt={}
       args:gsub("(%S+)",function(v) argt[#argt+1]=v end)
-      f(argt)
+      f(table.unpack(argt))
     else
       print("unknown command, /help for help")
     end
