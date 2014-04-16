@@ -514,10 +514,10 @@ end
 local function instr_poke()
   local byte,index=nextByte(),pullNum()
   local reg=regxrConv[byte]
-  local v
+  local v, stack
   if reg then
     v=readReg[byte]()
-    local stack=sn
+    stack=sn
     if type(v)=="boolean" then
       stack=sb
     elseif type(v)=="string" then
@@ -540,7 +540,7 @@ local function instr_poke()
   else
     error("Invalid arg#1, expected register or immediate")
   end
-  stack[#stack-index+1]=val
+  stack[#stack-index+1]=v
 end
 
 local function instr_burn()
@@ -559,8 +559,7 @@ local function instr_burn()
   end
 
   for i=1,count do
-    table.remove(cs,count)
-    count=count-1
+    table.remove(cs,#cs)
   end
 end
 
@@ -666,9 +665,16 @@ local function write(v)
 end
 
 local function instr_print()
+  --TODO accept literals too.
   local val=pullRegxr()
   write(val)
 end
+
+--TODO: this
+--local function instr_input()
+-- one arg of type reg, read repeatedly (from same cursor pos?) until get valid.
+--accept y/n and t/f, in either case, as well as 0/1 for boolean
+--
 
 local function instr_return()
   if #sa==0 then
@@ -684,10 +690,10 @@ end
 local instrTable = {
     [33]=instr_not,
     [62]=instr_gt,
-    [68]=instr_dig,
-    [84]=instr_detect,
-    [67]=instr_compare,
-    [66]=instr_burn,
+    [68]=instr_dig,     --D
+    [84]=instr_detect,  --T
+    [67]=instr_compare, --C
+    [66]=instr_burn,    --B
     [124]=instr_or,
     [61]=instr_eq,
     [60]=instr_lt,
@@ -697,28 +703,28 @@ local instrTable = {
     [47]=instr_div,
     [37]=instr_mod,
     [94]=instr_pow,
-    [80]=instr_place,
-    [79]=instr_pop,
-    [78]=instr_return,
-    [85]=instr_use,
+    [80]=instr_place,   --P
+    [79]=instr_pop,     --O
+    [78]=instr_return,  --N
+    [85]=instr_use,     --U
     [38]=instr_and,
-    [83]=instr_suck,
-    [82]=instr_drop,
-    [73]=instr_jif,
-    [72]=instr_push,
-    [70]=instr_face,
-    [77]=instr_move,
-    [76]=instr_call,
-    [75]=instr_peek,
-    [65]=instr_poke,
-    [74]=instr_jump,
-    [86]=instr_load,
+    [83]=instr_suck,    --S
+    [82]=instr_drop,    --R
+    [73]=instr_jif,     --I
+    [72]=instr_push,    --H
+    [70]=instr_face,    --F
+    [77]=instr_move,    --M
+    [76]=instr_call,    --L
+    [75]=instr_peek,    --K
+    [65]=instr_poke,    --A
+    [74]=instr_jump,    --J
+    [86]=instr_load,    --V (deprecated?)
     [35]=instr_loadn,
     [39]=instr_loads,
     [48]=instr_loadb0,
     [49]=instr_loadb1,
     [46]=instr_print,
-    [88]=instr_transfer,
+    [88]=instr_transfer,--X
     [32]=function() end,
   }
 
@@ -726,6 +732,8 @@ local instrTable = {
 !>DTCB|=<+-*/%^PONU&SRIHFMLKJV#'01.X
 !>|=<+-*/%^&#'01.ABCDFHIJKLMNOPRSTUVX
 
+ABCD F HIJKLMNOP RSTUV X
+    E G         Q     W YZ
 --]]
 
 function rlvm.run(prog,debug)
