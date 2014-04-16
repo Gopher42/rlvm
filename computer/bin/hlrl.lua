@@ -922,7 +922,11 @@ end
 
 local function resolveVar(ident,context)
   print("resolveVar "..ident)
+  if context.vars==nil then
+    error(debug.traceback())
+  end
   local v=context.vars[ident]
+
   if v then
     return {stackOffs=v.stackOffs,valType=v.valType,}
   else
@@ -1381,7 +1385,10 @@ function compileAssignmentHoist(node,context)
 
     if not node.isLocal then
       --try to find it
-      var=resolveVar(ident,varType,context)
+      if context.vars==nil then
+        error("THE FUWCF BWEJLAFW#RNA")
+      end
+      var=resolveVar(ident,context)
     end
     if not var then
       print("making locally")
