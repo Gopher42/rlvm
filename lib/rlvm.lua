@@ -379,10 +379,6 @@ local function instr_suck()
   turnBack[side]()
 end
 
-local function instr_goto()
-  --todo: this
-end
-
 local function instr_compare()
   local compTo=nextByte()
   local slot=hexConv[compTo]
@@ -517,35 +513,16 @@ local function instr_peek()
 end
 
 local function instr_poke()
-  local byte,index=nextByte(),pullNum()
+  local v,index=pullRegxrOrLiteral(),pullNum()
   local reg=regxrConv[byte]
-  local v, stack
-  if reg then
-    v=readReg[byte]()
-    stack=sn
-    if type(v)=="boolean" then
-      stack=sb
-    elseif type(v)=="string" then
-      stack=ss
-    end
-  elseif byte==35 then
-    v=readNumLit()
-    stack=sn
-  elseif byte==39 then
-    local len=nextB64()
-    v=program:sub(a,a+len-1)
-    a=a+len
-    stack=ss
-  elseif byte==48 then
-    v=false
-    stack=sb
-  elseif byte==49 then
-    v=true
-    stack=sb
-  else
-    error("Invalid arg#1, expected register or immediate")
+
+  if type(v)=="number" then
+    sn[#sn-index+1]=v
+  elseif type(v)=="boolean" then
+    sb[#sb-index+1]=v
+  elseif type(v)=="string" then
+    ss[#ss-index+1]=v
   end
-  stack[#stack-index+1]=v
 end
 
 local function instr_burn()
