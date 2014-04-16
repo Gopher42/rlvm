@@ -32,7 +32,7 @@ end
 
 
 --TODO: figure out a way to generalize this, for now just hard-coded in the raw disk mount
-local rlvm=require("/mnt/a4f/lib/rlvm")
+local rlvm=require("rlvm")
 local exit=false
 
 local commands={
