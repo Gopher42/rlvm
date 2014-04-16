@@ -75,7 +75,6 @@ local regxrConv={
     [108]="l",
     [107]="k",
     [109]="m",
-    [100]="d",
     [113]="q",
     [118]="v",
   }
@@ -671,13 +670,12 @@ local function write(v)
 end
 
 local function instr_print()
-  --TODO accept literals too.
   v=pullRegxrOrLiteral()
-  if not v then
+  if v==nil then
     error("invalid argument to print")
   end
 
-  write(v)
+  write(tostring(v))
 end
 
 local function readNumber()
@@ -689,7 +687,7 @@ local function readNumber()
       return v
     end
     term.setCursor(x,y)
-    term.write((" "):rep(#v)
+    term.write((" "):rep(#v))
     term.setCursor(x,y)
   end
 end
@@ -700,20 +698,17 @@ local validBooleanInputs={
   t=true,["true"]=true,
   f=false,["false"]=false,
   ["0"]=false,["1"]=true,["-1"]=true,
-end
+}
 
 local function readBoolean()
-  local x,y=term.getCursor()
 
   while true do
     v=term.read()
-    v=validBooleanInputs[v]
-    if v~=nil then
-      return v
+    v=v:gsub("\n","")
+    local res=validBooleanInputs[v]
+    if res~=nil then
+      return res
     end
-    term.setCursor(x,y)
-    term.write((" "):rep(#v)
-    term.setCursor(x,y)
   end
 end
 
@@ -733,11 +728,6 @@ local function instr_read()
   end
 end
 
---TODO: this
---local function instr_input()
--- one arg of type reg, read repeatedly (from same cursor pos?) until get valid.
---accept y/n and t/f, in either case, as well as 0/1 for boolean
---
 
 local function instr_return()
   if #sa==0 then
@@ -787,6 +777,7 @@ local instrTable = {
     [48]=instr_loadb0,
     [49]=instr_loadb1,
     [46]=instr_print,
+    [44]=instr_read,
     [88]=instr_transfer,--X
     [32]=function() end,
   }
