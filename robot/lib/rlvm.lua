@@ -434,7 +434,7 @@ end
 
 local function instr_push()
   v=pullRegxrOrLiteral()
-  if not v then
+  if v==nil then
     error("invalid argument to push")
   end
 
