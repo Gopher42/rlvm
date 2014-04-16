@@ -418,7 +418,7 @@ local function instr_transfer()
   b=robot.transferTo(slot2,count)
 end
 
-local function instr_push()
+local function pullRegxrOrLiteral()
   local byte=nextByte()
   local v
   if regxrConv[byte] then
@@ -433,7 +433,13 @@ local function instr_push()
     v=false
   elseif byte==49 then
     v=true
-  else
+  end
+  return v
+end
+
+local function instr_push()
+  v=pullRegxrOrLiteral()
+  if not v then
     error("invalid argument to push")
   end
 
@@ -666,8 +672,65 @@ end
 
 local function instr_print()
   --TODO accept literals too.
-  local val=pullRegxr()
-  write(val)
+  v=pullRegxrOrLiteral()
+  if not v then
+    error("invalid argument to print")
+  end
+
+  write(v)
+end
+
+local function readNumber()
+  local x,y=term.getCursor()
+
+  while true do
+    v=term.read()
+    if tonumber(v) then
+      return v
+    end
+    term.setCursor(x,y)
+    term.write((" "):rep(#v)
+    term.setCursor(x,y)
+  end
+end
+
+local validBooleanInputs={
+  y=true,yes=true,
+  n=false,no=false,
+  t=true,["true"]=true,
+  f=false,["false"]=false,
+  ["0"]=false,["1"]=true,["-1"]=true,
+end
+
+local function readBoolean()
+  local x,y=term.getCursor()
+
+  while true do
+    v=term.read()
+    v=validBooleanInputs[v]
+    if v~=nil then
+      return v
+    end
+    term.setCursor(x,y)
+    term.write((" "):rep(#v)
+    term.setCursor(x,y)
+  end
+end
+
+local function instr_read()
+  local byte=nextByte()
+  local r=regConv[byte]
+  if r=="n" then
+    n=readNumber()
+  elseif r=="s" then
+    s=term.read()
+  elseif r=="b" then
+    b=readBoolean()
+  elseif byte==107 then
+    n=event.pull("key_down")[4]
+  else
+    error("invalid argument to read")
+  end
 end
 
 --TODO: this
