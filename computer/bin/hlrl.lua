@@ -1297,12 +1297,12 @@ function compile.functionCall(node,context)
   if func~=nil then
     --try specials
     func=systemFunctions[ident]
-    if not func then
-      return false,{lineNum=node.lineNum,text="Attempt to call undefined function "..ident}
-    end
     return systemFunctions[ident].f(node.args,context)
   end
   func=resolveFunc(ident,context)
+  if not func then
+    return false,{lineNum=node.lineNum,text="Attempt to call undefined function "..ident}
+  end
 
   local output, trueArgs, pushCounts=compileExpressionList(node.args,context)
 
