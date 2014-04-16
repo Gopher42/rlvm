@@ -939,9 +939,24 @@ local function resolveVar(ident,context)
   end
 end
 
+local systemFunctions = {
+    print={
+      valType=nil,
+      valTypes={},
+      minArgs=1,
+      returnCounts={n=0,b=0,s=0},
+    },
+    move={
+      valType="multi",
+      valTypes={"boolean","number","string"},
+      minArgs=2,
+      returnCounts={n=1,b=1,s=1},
+    },
+  }
+
 
 local function resolveFunc(ident,context)
-  return context.funcs[ident] or (context.parent and resolveFunc(ident,context.parent))
+  return context.funcs[ident] or (context.parent and resolveFunc(ident,context.parent)) or systemFunctions[ident]
 end
 
 
@@ -1169,6 +1184,7 @@ local function compileExpressionListTrueTypes(list,context)
       valTypes[#valTypes+1]=argType
     end
   end
+  print("trueTypes = "..text.serialize(valTypes))
   return valTypes
 end
 
@@ -1204,18 +1220,6 @@ function compileExpressionList(list,context)
   return output, valTypes, pushCounts
 end
 
-local systemFunctions = {
-    print={
-      valType=nil,
-      valTypes={},
-      returnCounts={n=0,b=0,s=0},
-    },
-    move={
-      valType="multi",
-      valTypes={"boolean","number","string"},
-      returnCounts={n=1,b=1,s=1},
-    },
-  }
 
 local validSides={f=true,b=true,u=true,d=true,l=true,r=true}
 
@@ -1289,8 +1293,8 @@ end
 function compile.functionCall(node,context)
   local ident=node.identifier
   --lookup ident address in context
-  local func=resolveFunc(ident,context)
-  if func==nil then
+  local func=systemFunctions[ident]
+  if func~=nil then
     --try specials
     func=systemFunctions[ident]
     if not func then
@@ -1298,6 +1302,7 @@ function compile.functionCall(node,context)
     end
     return systemFunctions[ident].f(node.args,context)
   end
+  func=resolveFunc(ident,context)
 
   local output, trueArgs, pushCounts=compileExpressionList(node.args,context)
 
@@ -1373,9 +1378,8 @@ function compileAssignmentHoist(node,context)
     local ident=varDef.identifier
     local varType=varDef.valType
     if not varType then
-      --compile the expression list only if needed, for EFFICIENCY!
       varType=trueTypes[i]
-    elseif varType~=trueTypes[i] then
+    elseif trueTypes[i] and varType~=trueTypes[i] then
       return false,{lineNum=node.lineNum, text="Type mismatch: attempted to assign value of type "..trueTypes[i].." to variable "..varDef.identifier.." of type "..varType}
     end
     if not varType then
@@ -1438,7 +1442,8 @@ function compile.assignment(node,context)
       if v>0 then
         local count=numToB64(v)
         output[#output+1]="B"..k.."#"..numToB64(#count)..count
-        context.stackUse[typeCh]=context.stackUse[typeCh]-v
+        print("tc="..k)
+        context.stackUse[k]=context.stackUse[k]-v
       end
     end
   end
