@@ -1872,7 +1872,7 @@ while running  do
     end
   else
 
-    local res={pcall(parseBlock,input,1,1)}
+    local res,err={pcall(parseBlock,input,1,1)}
     --[[
     local file=io.open("/flop/tree","w")
     file:write(text.serialize(res))
@@ -1896,8 +1896,7 @@ while running  do
         file:close()
         --]]
       else
-        print(text.serialize(err))
-        print("error on line "..err.lineNum..":"..err.text)
+        print("error on line "..context.lineNum..":"..context.text)
       end
     end
   end
